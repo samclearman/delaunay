@@ -21,8 +21,8 @@ const generatePoints = function(n) {
       x: Math.random(),
       y: Math.random(),
       d: {
-        x: Math.random() * 0.1,
-        y: Math.random() * 0.1,
+        x: (Math.random() - 0.5) * 0.1,
+        y: (Math.random() - 0.5) * 0.1,
       },
     });
   }
@@ -228,8 +228,6 @@ const delaunay = function(pts) {
       rightCandidate = nextCandidate;
       nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
     }
-    leftCandidate = aboveLine(leftCandidate, [left, right]) && leftCandidate;
-    rightCandidate = aboveLine(rightCandidate, [left, right]) && rightCandidate;
     if (!leftCandidate && !rightCandidate) {
       break;
     }
@@ -277,12 +275,16 @@ const render = function(pts, connections, colors = {})  {
   }
 };
 
+const modOne = function(x) {
+  return x - Math.floor(x);
+};
+
 const update = function() {
   const thisUpdate = performance.now();
   const delta = (thisUpdate  - lastUpdate) / 1000;
   for (const p of points) {
-    p.x = (p.x + (delta * p.d.x)) % 1;
-    p.y = (p.y + (delta * p.d.y)) % 1;
+    p.x = modOne(p.x + (delta * p.d.x));
+    p.y = modOne(p.y + (delta * p.d.y));
   }
   const connections = delaunay(points);
   render(points, connections);
