@@ -1,5 +1,8 @@
-const canvas = document.getElementById('stuff');
+const canvas = <HTMLCanvasElement> document.getElementById('stuff');
 const ctx = canvas.getContext('2d');
+if (!ctx) {
+  throw new Error("failed to get 2d context");
+}
 
 const N = 40;
 let WIDTH = 300;
@@ -14,8 +17,17 @@ const resizer = function () {
 resizer();
 window.addEventListener("resize", resizer);
 
+interface Point {
+  x: number;
+  y: number;
+}
+
+interface Particle extends Point {
+  d: Point;
+}
+
 const generatePoints = function(n) {
-  const pts = [];
+  const pts: Particle[] = [];
   for (let i = 0; i < n; i++) {
     pts.push({
       x: Math.random(),
