@@ -26,7 +26,7 @@ interface Particle extends Point {
   d: Point;
 }
 
-const generatePoints = function(n) {
+const generatePoints = function(n: number): Particle[] {
   const pts: Particle[] = [];
   for (let i = 0; i < n; i++) {
     pts.push({
@@ -41,11 +41,11 @@ const generatePoints = function(n) {
   return pts;
 };
 
-const minus = function(p, q) {
+const minus = function(p: Point, q: Point): Point {
   return {x: p.x - q.x, y: p.y - q.y};
 };
 
-const det = function(M) {
+const det = function(M: number[][]): number {
   if (M.length === 0) {
     return 1;
   }
@@ -54,17 +54,29 @@ const det = function(M) {
   for (let i = 0; i < M.length; i++) {
     const sign = 1 - (2 * (i % 2));
     d += sign * M[0][i] * det(M.slice(1).map(
-      row => [].concat(row.slice(0,i), row.slice(i+1))
+      row => row.slice(0,i).concat(row.slice(i+1))
     ));
   }
   return d;
 };  
 
-const id = function(p) {
+const id = function(p): string {
   return `(${p.x},${p.y})`;
 };
 
-const emptyConnections = function(pts) {
+interface Link {
+  point: Point;
+  angle: number;
+};
+
+interface Ring {
+  center: Point;
+  links: Link[];
+};
+
+interface Connections { [key:string]:Ring };
+
+const emptyConnections = function(pts: Point[]): Connections {
   const connections = {};
   for (const pt of pts) {
     connections[id(pt)] = {center: pt, links: []};
@@ -72,7 +84,7 @@ const emptyConnections = function(pts) {
   return connections;
 };
 
-const addConnection = function(p, ring) {
+const addConnection = function(p: Point, ring: Ring): Ring {
   const D = minus(p, ring.center);
   ring.links.push({
     point: p,
@@ -82,28 +94,28 @@ const addConnection = function(p, ring) {
   return ring;
 };
 
-const removeConnection = function(p, ring) {
+const removeConnection = function(p: Point, ring: Ring): Ring {
   ring.links = ring.links.filter(c => c.point !== p);
   return ring;
 };
   
-const connect = function(p, q, connections) {
+const connect = function(p: Point, q: Point, connections: Connections): Connections  {
   connections[id(p)] = addConnection(q, connections[id(p)]);
   connections[id(q)] = addConnection(p, connections[id(q)]);
   return connections;
 };
 
-const disconnect = function(p, q, connections) {
+const disconnect = function(p: Point, q: Point, connections: Connections): Connections {
   connections[id(p)] = removeConnection(q, connections[id(p)]);
   connections[id(q)] = removeConnection(p, connections[id(q)]);
   return connections;
 };
 
-const mergeConnections = function(c, d) {
+const mergeConnections = function(c: Connections, d: Connections): Connections {
   return Object.assign({}, c, d);
 };
 
-const nextConnectionFromAngle = function(angle, ring, {direction}) {
+const nextConnectionFromAngle = function(angle: number, ring: Ring, {direction}: {direction: number}): Point {
   let i = 0;
   while (i < ring.links.length) {
     if (ring.links[i].angle === angle && direction <= 0) {
@@ -123,7 +135,7 @@ const nextConnectionFromAngle = function(angle, ring, {direction}) {
   return nextConnection.point;
 }
 
-const nextConnection = function(p, ring, {direction}) {
+const nextConnection = function(p: number | Point, ring: Ring, {direction}: {direction: number}): Point {
   if (typeof p === 'number') {
     return nextConnectionFromAngle(p, ring, {direction});
   }
@@ -132,7 +144,7 @@ const nextConnection = function(p, ring, {direction}) {
   return nextConnectionFromAngle(angle, ring, {direction});
 };
 
-const belowLine = function(p, [a, b]) {
+const belowLine = function(p: Point, [a, b]: Point[]): boolean {
   if ([a, b].includes(p)) {
     return false;
   }
@@ -145,7 +157,7 @@ const belowLine = function(p, [a, b]) {
   ]) < 0;
 };
 
-const aboveLine = function(p, [a, b]) {
+const aboveLine = function(p: Point, [a, b]: Point[]): boolean {
   if ([a, b].includes(p)) {
     return false;
   }
@@ -158,7 +170,7 @@ const aboveLine = function(p, [a, b]) {
   ]) > 0;
 };
 
-const inCircle = function(p, [a, b, c]) {
+const inCircle = function(p: Point, [a, b, c]: Point[]): boolean {
   if ([a, b, c].includes(p)) {
     return false;
   }
@@ -171,12 +183,12 @@ const inCircle = function(p, [a, b, c]) {
   ]) > 0;
 };
 
-const nextConnectionAbove = function(p, ring, opts, line) {
+const nextConnectionAbove = function(p: Point, ring: Ring, opts: {direction: number}, line: Point[]): null | Point {
   const q = nextConnection(p, ring, opts);
-  return aboveLine(q, line) && q;
+  return (aboveLine(q, line) || null) && q;
 };
 
-const delaunay = function(pts) {
+const delaunay = function(pts: Point[]): Connections {
   if (pts.length < 2) {
     throw new Error("Not enough points to compute delaunay triangulation");
   }
@@ -227,16 +239,16 @@ const delaunay = function(pts) {
   // longer Delaunay
   while(left && right) {
     let leftCandidate = nextConnectionAbove(right, connections[id(left)], {direction: 1}, [left, right]);
-    let nextCandidate = nextConnectionAbove(leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
-    while (inCircle(nextCandidate, [left, right, leftCandidate])) {
-      connections = disconnect(left, leftCandidate, connections);
+    let nextCandidate = leftCandidate && nextConnectionAbove(<Point>leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
+    while (nextCandidate && inCircle(nextCandidate, [left, right, <Point>leftCandidate])) {
+      connections = disconnect(left, <Point>leftCandidate, connections);
       leftCandidate = nextCandidate;
       nextCandidate = nextConnectionAbove(leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
     }
     let rightCandidate = nextConnectionAbove(left, connections[id(right)], {direction: -1}, [left, right]);
-    nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
-    while (inCircle(nextCandidate, [left, right, rightCandidate])) {
-      connections = disconnect(right, rightCandidate, connections);
+    nextCandidate = rightCandidate && nextConnectionAbove(<Point>rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
+    while (nextCandidate && inCircle(nextCandidate, [left, right, <Point>rightCandidate])) {
+      connections = disconnect(right, <Point>rightCandidate, connections);
       rightCandidate = nextCandidate;
       nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
     }
