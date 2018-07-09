@@ -232,18 +232,22 @@ const delaunay = function(pts: Point[]): Connections {
   // longer Delaunay
   while(left && right) {
     let leftCandidate = nextConnectionAbove(right, connections[id(left)], {direction: 1}, [left, right]);
-    let nextCandidate = leftCandidate && nextConnectionAbove(<Point>leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
-    while (nextCandidate && inCircle(nextCandidate, [left, right, <Point>leftCandidate])) {
-      connections = disconnect(left, <Point>leftCandidate, connections);
-      leftCandidate = nextCandidate;
-      nextCandidate = nextConnectionAbove(leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
+    if (leftCandidate) {
+      let nextCandidate = leftCandidate && nextConnectionAbove(leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
+      while (nextCandidate && inCircle(nextCandidate, [left, right, leftCandidate])) {
+        connections = disconnect(left, leftCandidate, connections);
+        leftCandidate = nextCandidate;
+        nextCandidate = nextConnectionAbove(leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
+      }
     }
     let rightCandidate = nextConnectionAbove(left, connections[id(right)], {direction: -1}, [left, right]);
-    nextCandidate = rightCandidate && nextConnectionAbove(<Point>rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
-    while (nextCandidate && inCircle(nextCandidate, [left, right, <Point>rightCandidate])) {
-      connections = disconnect(right, <Point>rightCandidate, connections);
-      rightCandidate = nextCandidate;
-      nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
+    if (rightCandidate) {
+      let nextCandidate = rightCandidate && nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
+      while (nextCandidate && inCircle(nextCandidate, [left, right, rightCandidate])) {
+        connections = disconnect(right, rightCandidate, connections);
+        rightCandidate = nextCandidate;
+        nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
+      }
     }
     if (!leftCandidate && !rightCandidate) {
       break;
