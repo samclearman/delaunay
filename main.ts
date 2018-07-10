@@ -16,7 +16,7 @@ const lt = function(p: Point, q: Point): boolean {
 };
 
 const minus = function(p: Point, q: Point): Point {
-  return {x: p.x - q.x, y: p.y - q.y};
+  return { x: p.x - q.x, y: p.y - q.y };
 };
 
 /*
@@ -33,18 +33,18 @@ const det = function(M: number[][]): number {
   for (let i = 0; i < M.length; i++) {
     const sign = 1 - (2 * (i % 2));
     d += sign * M[0][i] * det(M.slice(1).map(
-      row => row.slice(0,i).concat(row.slice(i+1))
+      row => row.slice(0, i).concat(row.slice(i + 1))
     ));
   }
   return d;
-};  
+};
 
 const belowLine = function(p: Point, [a, b]: Point[]): boolean {
   if ([a, b].includes(p)) {
     return false;
   }
 
-  [a, b] = [a,b].sort((l, r) => l.x - r.x);
+  [a, b] = [a, b].sort((l, r) => l.x - r.x);
   return det([
     [a.x, a.y, 1],
     [b.x, b.y, 1],
@@ -57,7 +57,7 @@ const aboveLine = function(p: Point, [a, b]: Point[]): boolean {
     return false;
   }
 
-  [a, b] = [a,b].sort((l, r) => l.x - r.x);
+  [a, b] = [a, b].sort((l, r) => l.x - r.x);
   return det([
     [a.x, a.y, 1],
     [b.x, b.y, 1],
@@ -71,10 +71,10 @@ const inCircle = function(p: Point, [a, b, c]: Point[]): boolean {
   }
 
   return det([
-    [a.x, a.y, (a.x)**2 + (a.y)**2, 1],
-    [b.x, b.y, (b.x)**2 + (b.y)**2, 1],
-    [c.x, c.y, (c.x)**2 + (c.y)**2, 1],
-    [p.x, p.y, (p.x)**2 + (p.y)**2, 1],
+    [a.x, a.y, (a.x) ** 2 + (a.y) ** 2, 1],
+    [b.x, b.y, (b.x) ** 2 + (b.y) ** 2, 1],
+    [c.x, c.y, (c.x) ** 2 + (c.y) ** 2, 1],
+    [p.x, p.y, (p.x) ** 2 + (p.y) ** 2, 1],
   ]) > 0;
 };
 
@@ -96,7 +96,7 @@ interface Ring {
   links: Link[];
 };
 
-const nextConnectionFromAngle = function(angle: number, ring: Ring, {direction}: {direction: number}): Point {
+const nextConnectionFromAngle = function(angle: number, ring: Ring, { direction }: { direction: number }): Point {
   let i = 0;
   while (i < ring.links.length) {
     if (ring.links[i].angle === angle && direction <= 0) {
@@ -116,16 +116,16 @@ const nextConnectionFromAngle = function(angle: number, ring: Ring, {direction}:
   return nextConnection.point;
 }
 
-const nextConnection = function(p: number | Point, ring: Ring, {direction}: {direction: number}): Point {
+const nextConnection = function(p: number | Point, ring: Ring, { direction }: { direction: number }): Point {
   if (typeof p === 'number') {
-    return nextConnectionFromAngle(p, ring, {direction});
+    return nextConnectionFromAngle(p, ring, { direction });
   }
   const D = minus(p, ring.center);
   const angle = Math.atan2(D.y, D.x);
-  return nextConnectionFromAngle(angle, ring, {direction});
+  return nextConnectionFromAngle(angle, ring, { direction });
 };
 
-const nextConnectionAbove = function(p: Point, ring: Ring, opts: {direction: number}, line: Point[]): null | Point {
+const nextConnectionAbove = function(p: Point, ring: Ring, opts: { direction: number }, line: Point[]): null | Point {
   const q = nextConnection(p, ring, opts);
   return (aboveLine(q, line) || null) && q;
 };
@@ -134,12 +134,12 @@ const nextConnectionAbove = function(p: Point, ring: Ring, opts: {direction: num
  * Meshes
  */
 
-interface Connections { [key:string]:Ring };
+interface Connections { [key: string]: Ring };
 
 const emptyConnections = function(pts: Point[]): Connections {
   const connections = {};
   for (const pt of pts) {
-    connections[id(pt)] = {center: pt, links: []};
+    connections[id(pt)] = { center: pt, links: [] };
   }
   return connections;
 };
@@ -150,7 +150,7 @@ const addConnection = function(p: Point, ring: Ring): Ring {
     point: p,
     angle: Math.atan2(D.y, D.x),
   });
-  ring.links.sort((c,d) => c.angle - d.angle);
+  ring.links.sort((c, d) => c.angle - d.angle);
   return ring;
 };
 
@@ -158,8 +158,8 @@ const removeConnection = function(p: Point, ring: Ring): Ring {
   ring.links = ring.links.filter(c => c.point !== p);
   return ring;
 };
-  
-const connect = function(p: Point, q: Point, connections: Connections): Connections  {
+
+const connect = function(p: Point, q: Point, connections: Connections): Connections {
   connections[id(p)] = addConnection(q, connections[id(p)]);
   connections[id(q)] = addConnection(p, connections[id(q)]);
   return connections;
@@ -183,8 +183,8 @@ const delaunay = function(pts: Point[]): Connections {
   if (pts.length < 2) {
     throw new Error("Not enough points to compute delaunay triangulation");
   }
-  
-  pts.sort((p,q) => p.x - q.x);
+
+  pts.sort((p, q) => p.x - q.x);
 
   if (pts.length === 2) {
     const [p, q] = pts;
@@ -194,7 +194,7 @@ const delaunay = function(pts: Point[]): Connections {
   }
 
   if (pts.length === 3) {
-    const [p,q,r] = pts;
+    const [p, q, r] = pts;
     let connections = emptyConnections(pts);
     connections = connect(p, q, connections);
     connections = connect(q, r, connections);
@@ -205,7 +205,7 @@ const delaunay = function(pts: Point[]): Connections {
   // Points are sorted by x already.  Compute triangulations for left and right
   // halves, then combine them
   const mid = Math.floor(pts.length / 2);
-  const leftPts = pts.slice(0,mid);
+  const leftPts = pts.slice(0, mid);
   const rightPts = pts.slice(mid);
   const leftConnections = delaunay(leftPts);
   const rightConnections = delaunay(rightPts);
@@ -215,36 +215,36 @@ const delaunay = function(pts: Point[]): Connections {
   // Find the lower tangent to the left and right hulls
   let left = leftPts[leftPts.length - 1];
   let right = rightPts[0];
-  let nextLeft = nextConnection(0, connections[id(left)], {direction: -1});
-  let nextRight = nextConnection(-Math.PI, connections[id(right)], {direction: 1});
+  let nextLeft = nextConnection(0, connections[id(left)], { direction: -1 });
+  let nextRight = nextConnection(-Math.PI, connections[id(right)], { direction: 1 });
   while (belowLine(nextLeft, [left, right]) || belowLine(nextRight, [left, right])) {
     if (belowLine(nextLeft, [left, right])) {
-      [left, nextLeft] = [nextLeft, nextConnection(left, connections[id(nextLeft)], {direction: -1})];
+      [left, nextLeft] = [nextLeft, nextConnection(left, connections[id(nextLeft)], { direction: -1 })];
       continue;
     }
-    [right, nextRight] = [nextRight, nextConnection(right, connections[id(nextRight)], {direction: 1})];
+    [right, nextRight] = [nextRight, nextConnection(right, connections[id(nextRight)], { direction: 1 })];
   }
   connections = connect(left, right, connections);
 
   // Fill in the rest of the edges between leftPts and rightPts and delete edges that are no
   // longer Delaunay
-  while(left && right) {
-    let leftCandidate = nextConnectionAbove(right, connections[id(left)], {direction: 1}, [left, right]);
+  while (left && right) {
+    let leftCandidate = nextConnectionAbove(right, connections[id(left)], { direction: 1 }, [left, right]);
     if (leftCandidate) {
-      let nextCandidate = leftCandidate && nextConnectionAbove(leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
+      let nextCandidate = nextConnectionAbove(leftCandidate, connections[id(left)], { direction: 1 }, [left, right]);
       while (nextCandidate && inCircle(nextCandidate, [left, right, leftCandidate])) {
         connections = disconnect(left, leftCandidate, connections);
         leftCandidate = nextCandidate;
-        nextCandidate = nextConnectionAbove(leftCandidate, connections[id(left)], {direction: 1}, [left, right]);
+        nextCandidate = nextConnectionAbove(leftCandidate, connections[id(left)], { direction: 1 }, [left, right]);
       }
     }
-    let rightCandidate = nextConnectionAbove(left, connections[id(right)], {direction: -1}, [left, right]);
+    let rightCandidate = nextConnectionAbove(left, connections[id(right)], { direction: -1 }, [left, right]);
     if (rightCandidate) {
-      let nextCandidate = rightCandidate && nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
+      let nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], { direction: -1 }, [left, right]);
       while (nextCandidate && inCircle(nextCandidate, [left, right, rightCandidate])) {
         connections = disconnect(right, rightCandidate, connections);
         rightCandidate = nextCandidate;
-        nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], {direction: -1}, [left, right]);
+        nextCandidate = nextConnectionAbove(rightCandidate, connections[id(right)], { direction: -1 }, [left, right]);
       }
     }
     if (!leftCandidate && !rightCandidate) {
@@ -287,15 +287,15 @@ const generatePoints = function(n: number): Particle[] {
   return pts;
 };
 
-const drawEdge = function(ctx, p, q) {
+const drawEdge = function(ctx: CanvasRenderingContext2D, p: Point, q: Point): void {
   ctx.beginPath();
   ctx.moveTo(p.x * WIDTH, (1 - p.y) * HEIGHT);
   ctx.lineTo(q.x * WIDTH, (1 - q.y) * HEIGHT);
   ctx.stroke();
 };
-  
-const render = function(ctx, pts, connections, colors = {})  {
-  ctx.clearRect(0,0,WIDTH,HEIGHT);
+
+const render = function(ctx: CanvasRenderingContext2D, pts: Point[], connections: Connections, colors = {}): void {
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
   ctx.fillStyle = 'green';
   for (const p of pts) {
     if (colors[id(p)]) {
@@ -311,13 +311,13 @@ const render = function(ctx, pts, connections, colors = {})  {
   }
 };
 
-const modOne = function(x) {
+const modOne = function(x: number): number {
   return x - Math.floor(x);
 };
 
-const update = function(ctx) {
+const update = function(ctx: CanvasRenderingContext2D, points: Particle[], lastUpdate: number): void {
   const thisUpdate = performance.now();
-  const delta = (thisUpdate  - lastUpdate) / 1000;
+  const delta = (thisUpdate - lastUpdate) / 1000;
   for (const p of points) {
     p.x = modOne(p.x + (delta * p.d.x));
     p.y = modOne(p.y + (delta * p.d.y));
@@ -325,11 +325,11 @@ const update = function(ctx) {
   const connections = delaunay(points);
   render(ctx, points, connections);
   lastUpdate = thisUpdate;
-  window.setTimeout(() => update(ctx), Math.max((1/60) - delta, 0) * 1000);
+  window.setTimeout(() => update(ctx, points, lastUpdate), Math.max((1 / 60) - delta, 0) * 1000);
 };
 
 
-const canvas = <HTMLCanvasElement> document.getElementById('stuff');
+const canvas = <HTMLCanvasElement>document.getElementById('stuff');
 const ctx = canvas.getContext('2d');
 if (!ctx) {
   throw new Error("failed to get 2d context");
@@ -340,7 +340,7 @@ const N = 40;
 let WIDTH = 300;
 let HEIGHT = 300;
 
-const resizer = function () {
+const resizer = function() {
   WIDTH = canvas.scrollWidth;
   HEIGHT = canvas.scrollHeight;
   canvas.width = WIDTH;
@@ -349,8 +349,5 @@ const resizer = function () {
 resizer();
 window.addEventListener("resize", resizer);
 
-let lastUpdate = 0;
 let points = generatePoints(N);
-let connections = delaunay(points);
-lastUpdate = performance.now();
-update(ctx);
+update(ctx, points, performance.now());
