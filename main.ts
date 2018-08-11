@@ -15,8 +15,24 @@ const lt = function(p: Point, q: Point): boolean {
   return p.x < q.x;
 };
 
+const plus = function(p: Point, q: Point): Point {
+  return { x: p.x + q.x, y: p.y + q.y };
+}
+
+const sum = function(points: Point[]): Point {
+  return points.reduce(plus, { x: 0, y: 0 });
+}
+
 const minus = function(p: Point, q: Point): Point {
   return { x: p.x - q.x, y: p.y - q.y };
+};
+
+const scale = function(p: Point, s: number): Point {
+  return { x: p.x * s, y: p.y * s };
+}
+
+const norm2 = function(p: Point): number {
+  return p.x * p.x + p.y * p.y;
 };
 
 /*
@@ -38,6 +54,14 @@ const det = function(M: number[][]): number {
   }
   return d;
 };
+
+const ccw = function(p: Point, q: Point, r: Point): boolean {
+  return det([
+    [p.x, p.y, 1],
+    [q.x, q.y, 1],
+    [r.x, r.y, 1],
+  ]) > 0;
+}
 
 const belowLine = function(p: Point, [a, b]: Point[]): boolean {
   if ([a, b].includes(p)) {
@@ -71,11 +95,20 @@ const inCircle = function(p: Point, [a, b, c]: Point[]): boolean {
   }
 
   return det([
-    [a.x, a.y, (a.x) ** 2 + (a.y) ** 2, 1],
-    [b.x, b.y, (b.x) ** 2 + (b.y) ** 2, 1],
-    [c.x, c.y, (c.x) ** 2 + (c.y) ** 2, 1],
-    [p.x, p.y, (p.x) ** 2 + (p.y) ** 2, 1],
+    [a.x, a.y, norm2(a), 1],
+    [b.x, b.y, norm2(b), 1],
+    [c.x, c.y, norm2(c), 1],
+    [p.x, p.y, norm2(p), 1],
   ]) > 0;
+};
+
+const centerOf = function(p: Point, q: Point, r: Point): Point {
+  const Mxy = det([[p.x, p.y, 1], [q.x, q.y, 1], [r.x, r.y, 1]]);
+  const Mny = det([[norm2(p), p.y, 1], [norm2(q), q.y, 1], [norm2(r), r.y, 1]]);
+  const Mnx = det([[norm2(p), p.x, 1], [norm2(q), q.x, 1], [norm2(r), r.x, 1]]);
+  const x = 0.5 * (Mny / Mxy);
+  const y = -0.5 * (Mnx / Mxy);
+  return { x, y };
 };
 
 /*
@@ -144,6 +177,15 @@ const emptyConnections = function(pts: Point[]): Connections {
   return connections;
 };
 
+const addPoint = function(p: Point, connections: Connections): Connections {
+  connections[id(p)] = { center: p, links: [] };
+  return connections;
+};
+
+const getPoints = function(connections: Connections): Point[] {
+  return Object.entries(connections).map(([k, r]) => r.center);
+};
+
 const addConnection = function(p: Point, ring: Ring): Ring {
   const D = minus(p, ring.center);
   ring.links.push({
@@ -174,6 +216,52 @@ const disconnect = function(p: Point, q: Point, connections: Connections): Conne
 const mergeConnections = function(c: Connections, d: Connections): Connections {
   return Object.assign({}, c, d);
 };
+
+const dual = function(connections: Connections): Connections {
+  return _dual(connections, randomTriangle(connections), {});
+}
+
+const randomTriangle = function(connections: Connections): Point[] {
+  const ring = Object.values(connections)[0];
+  const p = ring.center;
+  const q = ring.links[0].point;
+  let T = rightTriangle(connections, p, q)
+  if (!T) {
+    T = rightTriangle(connections, q, p);
+    if (!T) {
+      throw new Error(`Couldn't find triangle for edge ${p} - ${q}`);
+    }
+    return T;
+  }
+  return T;
+}
+
+const rightTriangle = function(connections: Connections, p: Point, q: Point): Point[] | null {
+  const r = nextConnection(p, connections[id(q)], { direction: 1 });
+  if (r !== nextConnection(q, connections[id(p)], { direction: -1 })) {
+    return null;
+  }
+  return [q, p ,r];
+}
+
+const _dual = function(connections: Connections, [a, b, c]: Point[], faces: Connections): Connections {
+  const center = centerOf(a, b, c);
+    if (id(center) in faces) {
+    return faces;
+  }
+  faces = addPoint(center, faces);
+
+  const neighbors = [[a, b], [b, c], [c, a]]
+    .map(pair => rightTriangle(connections, pair[0], pair[1]))
+    .filter(<Point>(T: Point | null): T is Point => { return T !== null });
+  for (const T of neighbors) {
+    const c = centerOf(T[0], T[1], T[2]);
+    faces = _dual(connections, T, faces);
+    faces = connect(center, c, faces);
+  }
+  return faces;
+}
+
 
 /*
  * The main event
@@ -294,15 +382,16 @@ const drawEdge = function(ctx: CanvasRenderingContext2D, p: Point, q: Point): vo
   ctx.stroke();
 };
 
-const render = function(ctx: CanvasRenderingContext2D, pts: Point[], connections: Connections, colors = {}): void {
-  ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  ctx.fillStyle = 'green';
+const render = function(ctx: CanvasRenderingContext2D, connections: Connections, color = 'green', colors = {}): void {
+  ctx.strokeStyle = color;
+  ctx.fillStyle = color;
+  const pts = getPoints(connections);
   for (const p of pts) {
     if (colors[id(p)]) {
       ctx.fillStyle = colors[id(p)];
     }
     ctx.fillRect(p.x * WIDTH, (1 - p.y) * HEIGHT, 2, 2);
-    ctx.fillStyle = 'green';
+    ctx.fillStyle = color;
     for (const link of connections[id(p)].links) {
       if (lt(link.point, p)) {
         drawEdge(ctx, link.point, p);
@@ -322,8 +411,12 @@ const update = function(ctx: CanvasRenderingContext2D, points: Particle[], lastU
     p.x = modOne(p.x + (delta * p.d.x));
     p.y = modOne(p.y + (delta * p.d.y));
   }
-  const connections = delaunay(points);
-  render(ctx, points, connections);
+  
+  const delaun = delaunay(points);
+  const vornoi  = dual(delaun);
+  ctx.clearRect(0, 0, WIDTH, HEIGHT);
+  render(ctx, delaun, 'red');
+  render(ctx, vornoi, 'blue');
   lastUpdate = thisUpdate;
   window.setTimeout(() => update(ctx, points, lastUpdate), Math.max((1 / 60) - delta, 0) * 1000);
 };
