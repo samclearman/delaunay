@@ -265,6 +265,7 @@ const _dual = function(connections: Connections, [a, b, c]: Point[], faces: Conn
 
 /*
  * The main event
+ * Note that we assume points are in a generic position (x's and y's distinct, no points colinear)
  */
 
 const delaunay = function(pts: Point[]): Connections {
@@ -390,7 +391,7 @@ const render = function(ctx: CanvasRenderingContext2D, connections: Connections,
     if (colors[id(p)]) {
       ctx.fillStyle = colors[id(p)];
     }
-    ctx.fillRect(p.x * WIDTH, (1 - p.y) * HEIGHT, 2, 2);
+    // ctx.fillRect(p.x * WIDTH, (1 - p.y * HEIGHT, 2, 2);
     ctx.fillStyle = color;
     for (const link of connections[id(p)].links) {
       if (lt(link.point, p)) {
@@ -404,6 +405,11 @@ const modOne = function(x: number): number {
   return x - Math.floor(x);
 };
 
+const shifted = function(points: Point[], d: Point): Point[] {
+  const jitter = { x: ((Math.random() - 0.5) / 1000), y: ((Math.random() - 0.5) / 1000) };
+  return points.map(p => plus(plus(p, d), jitter));
+};
+
 const update = function(ctx: CanvasRenderingContext2D, points: Particle[], lastUpdate: number): void {
   const thisUpdate = performance.now();
   const delta = (thisUpdate - lastUpdate) / 1000;
@@ -411,11 +417,22 @@ const update = function(ctx: CanvasRenderingContext2D, points: Particle[], lastU
     p.x = modOne(p.x + (delta * p.d.x));
     p.y = modOne(p.y + (delta * p.d.y));
   }
+
+  const torus = shifted((<Point[]> points).concat(
+    shifted(points, {x:  1, y:  0}),
+    shifted(points, {x: -1, y:  0}),
+    shifted(points, {x:  0, y:  1}),
+    shifted(points, {x:  0, y: -1}),
+    shifted(points, {x:  1, y:  1}),
+    shifted(points, {x: -1, y:  1}),
+    shifted(points, {x:  1, y: -1}),
+    shifted(points, {x: -1, y: -1})
+  ), {x: 0, y: 0});
   
-  const delaun = delaunay(points);
+  const delaun = delaunay(torus);
   const vornoi  = dual(delaun);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  render(ctx, delaun, 'red');
+  // render(ctx, delaun, 'red');
   render(ctx, vornoi, 'blue');
   lastUpdate = thisUpdate;
   window.setTimeout(() => update(ctx, points, lastUpdate), Math.max((1 / 60) - delta, 0) * 1000);
@@ -429,7 +446,7 @@ if (!ctx) {
 }
 ctx.strokeStyle = 'blue';
 
-const N = 40;
+const N = 15;
 let WIDTH = 300;
 let HEIGHT = 300;
 
