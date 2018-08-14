@@ -39,18 +39,39 @@ const norm2 = function(p: Point): number {
  * Geometry functions
  */
 
-// Calculate determinants the way Mom used to
-const det = function(M: number[][]): number {
-  if (M.length === 0) {
-    return 1;
+
+// Permutations for determinant computation
+type Permutation = number[];
+const S_cache: {[key: number]: {p: Permutation; sign: number}[]} = {};
+const S = function(n: number): {p: Permutation; sign: number}[] {
+  if (S_cache[n]) {
+    return S_cache[n];
+  }
+  
+  if (n == 1) {
+    return [{p: [1], sign: 1}];
   }
 
-  let d = 0;
-  for (let i = 0; i < M.length; i++) {
-    const sign = 1 - (2 * (i % 2));
-    d += sign * M[0][i] * det(M.slice(1).map(
-      row => row.slice(0, i).concat(row.slice(i + 1))
-    ));
+  const SS: {p: Permutation, sign: number}[]  = [];
+  for (const {p, sign:sign_p} of S(n - 1)) {
+    for (let i = 0; i < n; i++) {
+      const q = p.slice(0,i).concat([n], p.slice(i));
+      const sign_q = (-1)**(n - i + 1) * sign_p;
+      SS.push({p: q, sign: sign_q});
+    }
+  }
+  S_cache[n] = SS;
+  return SS;
+};
+const det = function(M: number[][]): number {
+  let n = M.length;
+  let d = 0
+  for (const {p, sign} of S(n)) {
+    let x = sign;
+    for (let i = 0; i < n; i++) {
+      x *= M[i][p[i] - 1];
+    }
+    d += x;
   }
   return d;
 };
