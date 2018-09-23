@@ -453,8 +453,10 @@ const update = function(ctx: CanvasRenderingContext2D, points: Particle[], lastU
   const delaun = delaunay(torus);
   const vornoi  = dual(delaun);
   ctx.clearRect(0, 0, WIDTH, HEIGHT);
-  // render(ctx, delaun, 'red');
+  render(ctx, delaun, 'red');
   render(ctx, vornoi, 'blue');
+    debugger;
+
   lastUpdate = thisUpdate;
   window.setTimeout(() => update(ctx, points, lastUpdate), Math.max((1 / 60) - delta, 0) * 1000);
 };
@@ -467,7 +469,7 @@ if (!ctx) {
 }
 ctx.strokeStyle = 'blue';
 
-const N = 15;
+const N = 40;
 let WIDTH = 300;
 let HEIGHT = 300;
 
